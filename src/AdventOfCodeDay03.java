@@ -1,7 +1,9 @@
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 class Coordinates {
   public int x;
@@ -18,7 +20,6 @@ class Coordinates {
   }
 
   public boolean equals(Object o) {
-
     // null check
     if (o == null) {
       return false;
@@ -40,7 +41,6 @@ class Coordinates {
 
   public String toString() {
     return "(" + x + "," + y + ")";
-
   }
 }
 
@@ -49,13 +49,37 @@ public class AdventOfCodeDay03 {
   public static int locationX = 0;
   public static int locationY = 0;
 
-  public static int findClosestIntersection(HashSet<Coordinates> coordinates1,
-      HashSet<Coordinates> coordinates2) {
-    Iterator<Coordinates> itr = coordinates1.iterator();
+  public static int findIntersection(HashMap<Coordinates, Integer> coordinatesMap1,
+      HashMap<Coordinates, Integer> coordinatesMap2) {
+    Set<Coordinates> coordinates1 = coordinatesMap1.keySet();
+    Set<Coordinates> coordinates2 = coordinatesMap2.keySet();
     coordinates1.retainAll(coordinates2);
+    
+    boolean manhattenOrShortestPath=false; //true for Manhattan, false for shortest path
+    if(manhattenOrShortestPath) {
+      return calcSmallestManhattenDistance(coordinates1);
+    }else{
+      return findShortestPath(coordinatesMap1,coordinatesMap2,coordinates1);
+    }
+  }
+
+  public static int findShortestPath(HashMap<Coordinates, Integer> coordinatesMap1,
+      HashMap<Coordinates, Integer> coordinatesMap2, Set<Coordinates> coordinates1) {
+    int smallestDistance=100000;
+    for(Coordinates coor : coordinates1) {
+      int currentDistance = coordinatesMap1.get(coor)+coordinatesMap2.get(coor);
+      if(currentDistance<smallestDistance) {
+        smallestDistance=currentDistance;
+      }
+    }
+    return smallestDistance;
+  }
+
+
+  public static int calcSmallestManhattenDistance(Set<Coordinates> coordinates1) {
     int smallestDistance = 100000000;
     for (Coordinates coor : coordinates1) {
-      int currentDistance = calcManhattenDistance(coor);
+      int currentDistance = Math.abs(coor.x) + Math.abs(coor.y);
       if (currentDistance < smallestDistance) {
         smallestDistance = currentDistance;
       }
@@ -63,48 +87,50 @@ public class AdventOfCodeDay03 {
     return smallestDistance;
   }
 
-  public static int calcManhattenDistance(Coordinates coor) {
-    return Math.abs(coor.x) + Math.abs(coor.y);
-  }
-
-  public static void move(char direction, int distance, HashSet<Coordinates> coordinates) {
+  public static void move(char direction, int distance, HashMap<Coordinates, Integer> coordinates,int totalDistance) {    
     switch (direction) {
       case 'R':
-        for (int i = locationX + 1; i <= locationX + distance; i++) {
-          Coordinates coor = new Coordinates(i, locationY);
-          coordinates.add(coor);
+        for (int i = 1; i <= distance; i++) {
+          locationX +=1;
+          addToMap(coordinates,i,totalDistance);
         }
-        locationX += distance;
+        
         break;
       case 'L':
-        for (int i = locationX - 1; i >= locationX - distance; i--) {
-          Coordinates coor = new Coordinates(i, locationY);
-          coordinates.add(coor);
+        for (int i = 1; i <= distance; i++) { 
+          locationX-=1;
+          addToMap(coordinates,i,totalDistance);
         }
-        locationX -= distance;
+       
         break;
       case 'U':
-        for (int i = locationY + 1; i <= locationY + distance; i++) {
-          Coordinates coor = new Coordinates(locationX, i);
-          coordinates.add(coor);
+        for (int i = 1; i <= distance; i++) {
+          locationY+=1;
+          addToMap(coordinates,i,totalDistance);
         }
-        locationY += distance;
         break;
       case 'D':
-        for (int i = locationY - 1; i >= locationY - distance; i--) {
-          Coordinates coor = new Coordinates(locationX, i);
-          coordinates.add(coor);
+        for (int i = 1; i <= distance; i++) {
+          locationY-=1;
+          addToMap(coordinates,i,totalDistance);
         }
-        locationY -= distance;
         break;
     }
   }
+  public static void addToMap(HashMap<Coordinates, Integer> coordinates, int i, int totalDistance) {
+    Coordinates coor = new Coordinates(locationX, locationY);
+    if (!coordinates.containsKey(coor)) {
+      coordinates.put(coor, totalDistance+i);
+    }
+  }
 
-  public static void instructionParser(String[] input, HashSet<Coordinates> coordinates) {
+  public static void instructionParser(String[] input, HashMap<Coordinates, Integer> coordinates) {
+    int totalDistance=0;
     for (int i = 0; i < input.length; i++) {
       char direction = input[i].charAt(0);
       int distance = Integer.parseInt(input[i].substring(1));
-      move(direction, distance, coordinates);
+      move(direction, distance, coordinates,totalDistance);
+      totalDistance+=distance;
     }
   }
 
@@ -115,21 +141,27 @@ public class AdventOfCodeDay03 {
     String[] testInput1 = {"R75", "D30", "R83", "U83", "L12", "D49", "R71", "U7", "L72"};
     String[] testInput2 = {"U62", "R66", "U55", "R34", "D71", "R55", "D58", "R83"};
     int correctDistance = 159;
-    HashSet<Coordinates> path1 = new HashSet<Coordinates>();
-    HashSet<Coordinates> path2 = new HashSet<Coordinates>();
+    int correctPathDistance=610;
+    HashMap<Coordinates, Integer> path1 = new HashMap<Coordinates, Integer>();
+    HashMap<Coordinates, Integer> path2 = new HashMap<Coordinates, Integer>();
     instructionParser(testInput1, path1);
     locationX = 0;
     locationY = 0;
     instructionParser(testInput2, path2);
-    int closestIntersectionTest = findClosestIntersection(path1, path2);
-    System.out.println(closestIntersectionTest);
-    if (closestIntersectionTest == correctDistance) {
-      System.out.println("Test passed");
-    }
-
     
-    //solution
-    String[] wireMap1 = {"R1000", "D940", "L143", "D182", "L877", "D709", "L253", "U248", "L301",
+    int intersectionTest = findIntersection(path1, path2);
+    System.out.println(intersectionTest);
+    if (intersectionTest == correctDistance) {
+      System.out.println("Test passed for Manhatten");
+    }
+    if(intersectionTest == correctPathDistance) {
+      System.out.println("Test passed for closestIntersection");
+    }
+    
+    
+
+    // solution
+    String[] wire1 = {"R1000", "D940", "L143", "D182", "L877", "D709", "L253", "U248", "L301",
         "U434", "R841", "U715", "R701", "U92", "R284", "U115", "R223", "U702", "R969", "U184",
         "L992", "U47", "L183", "U474", "L437", "D769", "L71", "U96", "R14", "U503", "R144", "U432",
         "R948", "U96", "L118", "D696", "R684", "U539", "L47", "D851", "L943", "U606", "L109",
@@ -157,7 +189,7 @@ public class AdventOfCodeDay03 {
         "D281", "R161", "D400", "R266", "D67", "L205", "D94", "R551", "U332", "R938", "D759",
         "L437", "D515", "L480", "U774", "L373", "U478", "R963", "D863", "L735", "U138", "L580",
         "U72", "L770", "U968", "L594"};
-    String[] wireMap2 = {"L990", "D248", "L833", "U137", "L556", "U943", "R599", "U481", "R963",
+    String[] wire2 = {"L990", "D248", "L833", "U137", "L556", "U943", "R599", "U481", "R963",
         "U812", "L825", "U421", "R998", "D847", "R377", "D19", "R588", "D657", "R197", "D354",
         "L548", "U849", "R30", "D209", "L745", "U594", "L168", "U5", "L357", "D135", "R94", "D686",
         "R965", "U838", "R192", "U428", "L861", "U354", "R653", "U543", "L633", "D508", "R655",
@@ -187,13 +219,13 @@ public class AdventOfCodeDay03 {
         "R220"};
     locationX = 0;
     locationY = 0;
-    HashSet<Coordinates> wire1 = new HashSet<Coordinates>();
-    HashSet<Coordinates> wire2 = new HashSet<Coordinates>();
-    instructionParser(wireMap1, wire1);
+    HashMap<Coordinates, Integer> wireMap1 = new HashMap<Coordinates, Integer>();
+    HashMap<Coordinates, Integer> wireMap2 = new HashMap<Coordinates, Integer>();
+    instructionParser(wire1, wireMap1);
     locationX = 0;
     locationY = 0;
-    instructionParser(wireMap2, wire2);
-    int closestIntersection = findClosestIntersection(wire1, wire2);
+    instructionParser(wire2, wireMap2);
+    int closestIntersection = findIntersection(wireMap1, wireMap2);
     System.out.println("The closest intersection is " + closestIntersection);
   }
 }
